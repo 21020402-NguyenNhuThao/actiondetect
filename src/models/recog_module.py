@@ -158,7 +158,7 @@ if __name__ == "__main__":
         output = module(torch.randn(16, 3, 224, 224))
         print("module output", output.shape)
 
-    @hydra.main(version_base="1.3", config_path=config_path, config_name="dlib_resnet.yaml")
+    @hydra.main(version_base="1.3", config_path=config_path, config_name="recog.yaml")
     def main(cfg: DictConfig):
         print(cfg)
         test_net(cfg)

@@ -3,31 +3,110 @@ from typing import Any, Dict, Optional, Tuple
 import torch
 from lightning import LightningDataModule
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
-
+import recog_utils.video_transforms as video_transforms 
+import recog_utils.volume_transforms as volume_transforms
 from torchvision.transforms import transforms
 import os
 import pandas as pd
 from torchvision.io import read_video
 
+# class RegDataset(Dataset):
+#     def __init__(self, annotations_file, data_dir, transform=None, target_transform=None):
+#         self.img_labels = pd.read_csv(annotations_file)
+#         self.img_dir = data_dir
+#         self.transform = transform
+#         self.target_transform = target_transform
+
+#     def __len__(self):
+#         return len(self.img_labels)
+
+#     def __getitem__(self, idx):
+#         img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
+#         image = read_video(img_path)
+#         label = self.img_labels.iloc[idx, 1]
+#         if self.transform:
+#             image = self.transform(image)
+#         if self.target_transform:
+#             label = self.target_transform(label)
+#         return image, label
+
 class RegDataset(Dataset):
-    def __init__(self, annotations_file, data_dir, transform=None, target_transform=None):
-        self.img_labels = pd.read_csv(annotations_file)
-        self.img_dir = data_dir
-        self.transform = transform
-        self.target_transform = target_transform
+    def __init__(
+            self,
+            anno_path,
+            data_dir,
+            mode='train',
+            new_height=256, 
+            new_width=340, 
+            keep_aspect_ratio=True,
+            clip_len=7):
+        self.anno_path = anno_path
+        self.data_dir = data_dir
+        self.mode = mode
+        self.clip_len = clip_len
+        self.new_height = new_height
+        self.new_width = new_width
+        self.keep_aspect_ratio = keep_aspect_ratio
+        self.aug = False
+        samples = pd.read_csv(self.anno_path, header=None, delimiter=' ')
+        self.dataset_samples = list(samples.values[:, 1])
+        self.label_array = list(samples.values[:, 0])
 
+        if (mode == 'train'):
+            pass
+
+        elif (mode == 'validation'):
+            self.data_transform = video_transforms.Compose([
+                video_transforms.Resize(self.short_side_size, interpolation='bilinear'),
+                video_transforms.CenterCrop(size=(self.crop_size, self.crop_size)),
+                volume_transforms.ClipToTensor(),
+                video_transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                           std=[0.229, 0.224, 0.225])
+            ])
+        elif mode == 'test':
+            self.data_resize = video_transforms.Compose([
+                video_transforms.Resize(size=(short_side_size), interpolation='bilinear')
+            ])
+            self.data_transform = video_transforms.Compose([
+                volume_transforms.ClipToTensor(),
+                video_transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                           std=[0.229, 0.224, 0.225])
+            ])
+            self.test_seg = []
+            self.test_dataset = []
+            self.test_label_array = []
+            for ck in range(self.test_num_segment):
+                for cp in range(self.test_num_crop):
+                    for idx in range(len(self.label_array)):
+                        sample_label = self.label_array[idx]
+                        self.test_label_array.append(sample_label)
+                        self.test_dataset.append(self.dataset_samples[idx])
+                        self.test_seg.append((ck, cp))
+    
     def __len__(self):
-        return len(self.img_labels)
+        if self.mode != 'test':
+            return len(self.dataset_samples)
+        else:
+            return len(self.test_dataset)
+        
+    def __getitem__(self, index):
+        if self.mode == 'train':
+            print('wait...')
+        elif self.mode == 'validation':
+            print('wait me...')
+        elif self.mode == 'test':
+            sample = self.test_dataset[index]
+            temp_split, spac_split = self.test_seg[index]
+            buffer = self.loadvideo_decord(sample) #np arrays num_of_frames x H x W x num_of_channels
 
-    def __getitem__(self, idx):
-        img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
-        image = read_video(img_path)
-        label = self.img_labels.iloc[idx, 1]
-        if self.transform:
-            image = self.transform(image)
-        if self.target_transform:
-            label = self.target_transform(label)
-        return image, label
+            while len(buffer) == 0:
+                #handle error
+                print('loading video failed')
+            buffer = self.data_resize(buffer)
+            #compute buffer
+
+        return buffer, self.test_label_array[index], sample.split("/")[-1].split(".")[0], temp_split, spac_split #return name of video
+
 
 class RegDataModule(LightningDataModule):
     """Example of LightningDataModule for MNIST dataset.
