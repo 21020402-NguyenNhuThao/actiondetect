@@ -1,0 +1,17 @@
+_target_: src.data.recog_datamodule.RegDataModule
+
+data_dir: ibug_300W_large_face_landmark_dataset ##DATA_DIR
+batch_size: 16
+train_val_test_split: [5_666, 1_000]
+num_workers: 0
+pin_memory: False
+
+data_train:
+  _target_: src.data.reg_datamodule.RegDataset
+  _partial_: true # need_to supply data_dir in setup()
+  annotations_file: labels_ibug_300W_train.xml ###CSV FILE
+
+data_test:
+  _target_: src.data.reg_datamodule.RegDataset
+  _partial_: true # need_to supply data_dir in setup()
+  annotations_file: labels_ibug_300W_test.xml ###CSV_FILE

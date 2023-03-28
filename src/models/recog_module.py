@@ -6,7 +6,7 @@ from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 
 
-class MNISTLitModule(LightningModule):
+class RegLitModule(LightningModule):
     """Example of LightningModule for MNIST classification.
 
     A LightningModule organizes your PyTorch code into 6 sections:
@@ -135,4 +135,33 @@ class MNISTLitModule(LightningModule):
 
 
 if __name__ == "__main__":
-    _ = MNISTLitModule(None, None, None)
+    # read config file from configs/model/dlib_resnet.yaml
+    import pyrootutils
+    from omegaconf import DictConfig
+    import hydra
+
+    # find paths
+    path = pyrootutils.find_root(
+        search_from=__file__, indicator=".project-root")
+    config_path = str(path / "configs" / "model")
+    output_path = path / "outputs"
+    print("paths", path, config_path, output_path)
+
+    def test_net(cfg):
+        net = hydra.utils.instantiate(cfg.net)
+        print("*"*20+" net "+"*"*20, "\n", net)
+        output = net(torch.randn(16, 3, 224, 224))
+        print("output", output.shape)
+
+    def test_module(cfg):
+        module = hydra.utils.instantiate(cfg)
+        output = module(torch.randn(16, 3, 224, 224))
+        print("module output", output.shape)
+
+    @hydra.main(version_base="1.3", config_path=config_path, config_name="dlib_resnet.yaml")
+    def main(cfg: DictConfig):
+        print(cfg)
+        test_net(cfg)
+        test_module(cfg)
+
+    main()
