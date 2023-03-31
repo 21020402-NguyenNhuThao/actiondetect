@@ -35,7 +35,6 @@ class RegLitModule(LightningModule):
         self.save_hyperparameters(logger=False)
 
         self.net = net
-
         # loss function
         self.criterion = torch.nn.CrossEntropyLoss()
 
