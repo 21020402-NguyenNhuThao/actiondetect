@@ -3,12 +3,16 @@ from typing import Any, Dict, Optional, Tuple
 import torch
 from lightning import LightningDataModule
 from torch.utils.data import ConcatDataset, DataLoader, Dataset, random_split
-import recog_utils.video_transforms as video_transforms 
-import recog_utils.volume_transforms as volume_transforms
+import src.data.recog_utils.video_transforms as video_transforms 
+import src.data.recog_utils.volume_transforms as volume_transforms
 from torchvision.transforms import transforms
 import os
 import pandas as pd
+from mmcv import Config
+
 from torchvision.io import read_video
+from mmaction.datasets import build_dataloader
+from mmaction.datasets import build_dataset
 
 # class RegDataset(Dataset):
 #     def __init__(self, annotations_file, data_dir, transform=None, target_transform=None):
@@ -152,13 +156,18 @@ class RegDataModule(LightningDataModule):
         self.save_hyperparameters(logger=False)
 
         # data transformations
-        self.transforms = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
-        )
+        # self.transforms = transforms.Compose(
+        #     [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+        # )
 
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
+        # cfg = Config.fromfile('mmaction2/configs/recognition/tsn/tsn_r50_video_1x1x8_100e_kinetics400_rgb.py')
+        # cfg.data.test.type = 'VideoDataset'
+        # cfg.data.test.ann_file = 'data/kinetics400_tiny/kinetics_tiny_val_video.txt'
+        # cfg.data.test.data_prefix = 'data/kinetics400_tiny/val/'
+        # self.data_test: Optional[Dataset] = build_dataset((cfg.data.test, dict(test_mode=True)))
 
     @property
     def num_classes(self):
@@ -178,29 +187,33 @@ class RegDataModule(LightningDataModule):
         careful not to execute things like random split twice!
         """
         # load and split datasets only if not loaded already
-        if not self.data_train and not self.data_val and not self.data_test:
-            # trainset = MNIST(self.hparams.data_dir, train=True, transform=self.transforms)
-            # testset = MNIST(self.hparams.data_dir, train=False, transform=self.transforms)
-            # dataset = ConcatDataset(datasets=[trainset, testset])
-            data_train = self.hparams.data_train(
-                data_dir=self.hparams.data_dir)
-            self.data_test = self.hparams.data_test(
-                data_dir=self.hparams.data_dir)
-            self.data_train, self.data_val = random_split(
-                dataset=data_train,
-                lengths=self.hparams.train_val_test_split,
-                generator=torch.Generator().manual_seed(42),
-            )
+        # if not self.data_train and not self.data_val and not self.data_test:
+        #     # trainset = MNIST(self.hparams.data_dir, train=True, transform=self.transforms)
+        #     # testset = MNIST(self.hparams.data_dir, train=False, transform=self.transforms)
+        #     # dataset = ConcatDataset(datasets=[trainset, testset])
+        #     data_train = self.hparams.data_train(
+        #         data_dir=self.hparams.data_dir)
+        #     self.data_test = self.hparams.data_test(
+        #         data_dir=self.hparams.data_dir)
+        #     self.data_train, self.data_val = random_split(
+        #         dataset=data_train,
+        #         lengths=self.hparams.train_val_test_split,
+        #         generator=torch.Generator().manual_seed(42),
+        #     )
 
     def train_dataloader(self):
-        return DataLoader(
-            dataset=self.data_train,
-            batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
-            pin_memory=self.hparams.pin_memory,
-            shuffle=True,
-        )
+        cfg = Config.fromfile('mmaction2/configs/recognition/tsn/tsn_r50_video_1x1x8_100e_kinetics400_rgb.py')
+        cfg.data.test.type = 'VideoDataset'
+        cfg.data.test.ann_file = 'data/kinetics400_tiny/kinetics_tiny_train_video.txt'
+        cfg.data.test.data_prefix = 'data/kinetics400_tiny/train/'
 
+        return build_dataloader(
+            dataset = build_dataset(cfg.data.test, dict(test_mode=True)),
+            videos_per_gpu=1,
+            workers_per_gpu=4,
+            dist=False,
+            shuffle=False)
+        
     def val_dataloader(self):
         return DataLoader(
             dataset=self.data_val,
@@ -211,13 +224,24 @@ class RegDataModule(LightningDataModule):
         )
 
     def test_dataloader(self):
-        return DataLoader(
-            dataset=self.data_test,
-            batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
-            pin_memory=self.hparams.pin_memory,
-            shuffle=False,
-        )
+        # return DataLoader(
+        #     dataset=self.data_test,
+        #     batch_size=self.hparams.batch_size,
+        #     num_workers=self.hparams.num_workers,
+        #     pin_memory=self.hparams.pin_memory,
+        #     shuffle=False,
+        # )
+        cfg = Config.fromfile('mmaction2/configs/recognition/tsn/tsn_r50_video_1x1x8_100e_kinetics400_rgb.py')
+        cfg.data.test.type = 'VideoDataset'
+        cfg.data.test.ann_file = 'data/kinetics400_tiny/kinetics_tiny_val_video.txt'
+        cfg.data.test.data_prefix = 'data/kinetics400_tiny/val/'
+
+        return build_dataloader(
+            dataset = build_dataset(cfg.data.test, dict(test_mode=True)),
+            videos_per_gpu=1,
+            workers_per_gpu=4,
+            dist=False,
+            shuffle=False)
 
     def teardown(self, stage: Optional[str] = None):
         """Clean up after fit or test."""
@@ -255,16 +279,16 @@ if __name__ == "__main__":
         datamodule.setup()
         loader = datamodule.train_dataloader()
         bx, by = next(iter(loader))
-        print("n_batch", len(loader), bx.shape, by.shape, type(by))
+        print("n_batch", len(loader), len(bx), len(by), type(by))
         
         
-        for bx, by in tqdm(datamodule.train_dataloader()):
-            pass
-        print("training data passed")
+        # for bx, by in tqdm(datamodule.train_dataloader()):
+        #     pass
+        # print("training data passed")
 
-        for bx, by in tqdm(datamodule.val_dataloader()):
-            pass
-        print("validation data passed")
+        # for bx, by in tqdm(datamodule.val_dataloader()):
+        #     pass
+        # print("validation data passed")
 
         for bx, by in tqdm(datamodule.test_dataloader()):
             pass
