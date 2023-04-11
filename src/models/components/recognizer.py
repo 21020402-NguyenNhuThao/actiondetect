@@ -2,7 +2,6 @@ import torch
 from mmaction.apis import inference_recognizer, init_recognizer
 from torch import nn 
 from mmcv import Config
-from mmaction.models import build_model
 from mmaction.apis import single_gpu_test
 import torch.nn.functional as F
 from mmcv.parallel import MMDataParallel
@@ -22,7 +21,7 @@ class SimpleRecog(nn.Module):
         self.cfg.evaluation.save_best='auto'
 
         self.device = torch.device(device)
-        self.model = build_model(self.cfg.model, train_cfg=self.cfg.get('train_cfg'), test_cfg=self.cfg.get('test_cfg'))
+        self.model = init_recognizer(config_file,checkpoint_file,device)
         self.model.eval()
     def forward(self, x): 
         # batch_size, channels, width, height = x.size()
@@ -39,13 +38,10 @@ class SimpleRecog(nn.Module):
         # print(x) #1,250,3,224,224
         # print(type(x))
         # x = x.view(250,3,224,224)
-        return self.model(x, return_loss=False)
-        results = []
-        model = MMDataParallel(self.model, device_ids=[0])
-        with torch.no_grad(): 
-            result = model(return_loss=False, **x) #bug here
-        results.extend(result)
-        return results
+        # X 4 dimentions B * C * H * W
+        print(x.shape)
+        x.unsqueeze(0)
+        return self.model.forward(x, return_loss = False)
         
         
 
