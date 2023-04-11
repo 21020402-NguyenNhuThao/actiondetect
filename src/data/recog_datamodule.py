@@ -203,25 +203,29 @@ class RegDataModule(LightningDataModule):
 
     def train_dataloader(self):
         cfg = Config.fromfile('mmaction2/configs/recognition/tsn/tsn_r50_video_1x1x8_100e_kinetics400_rgb.py')
-        cfg.data.test.type = 'VideoDataset'
-        cfg.data.test.ann_file = 'data/kinetics400_tiny/kinetics_tiny_train_video.txt'
-        cfg.data.test.data_prefix = 'data/kinetics400_tiny/train/'
+        cfg.data.train.type = 'VideoDataset'
+        cfg.data.train.ann_file = 'data/kinetics400_tiny/kinetics_tiny_train_video.txt'
+        cfg.data.train.data_prefix = 'data/kinetics400_tiny/train/'
 
         return build_dataloader(
-            dataset = build_dataset(cfg.data.test, dict(test_mode=True)),
+            dataset = build_dataset(cfg.data.train),
             videos_per_gpu=1,
             workers_per_gpu=4,
             dist=False,
             shuffle=False)
         
     def val_dataloader(self):
-        return DataLoader(
-            dataset=self.data_val,
-            batch_size=self.hparams.batch_size,
-            num_workers=self.hparams.num_workers,
-            pin_memory=self.hparams.pin_memory,
-            shuffle=False,
-        )
+        cfg = Config.fromfile('mmaction2/configs/recognition/tsn/tsn_r50_video_1x1x8_100e_kinetics400_rgb.py')
+        cfg.data.val.type = 'VideoDataset'
+        cfg.data.val.ann_file = 'data/kinetics400_tiny/kinetics_tiny_val_video.txt'
+        cfg.data.val.data_prefix = 'data/kinetics400_tiny/val/'
+        
+        return build_dataloader(
+            dataset = build_dataset(cfg.data.val),
+            videos_per_gpu=1,
+            workers_per_gpu=4,
+            dist=False,
+            shuffle=False)
 
     def test_dataloader(self):
         # return DataLoader(
@@ -235,13 +239,14 @@ class RegDataModule(LightningDataModule):
         cfg.data.test.type = 'VideoDataset'
         cfg.data.test.ann_file = 'data/kinetics400_tiny/kinetics_tiny_val_video.txt'
         cfg.data.test.data_prefix = 'data/kinetics400_tiny/val/'
-
-        return build_dataloader(
-            dataset = build_dataset(cfg.data.test, dict(test_mode=True)),
+        datasets = build_dataset(cfg.data.test, dict(test_mode=True))
+        dloader = build_dataloader(
+            dataset = datasets,
             videos_per_gpu=1,
             workers_per_gpu=4,
             dist=False,
             shuffle=False)
+        return dloader
 
     def teardown(self, stage: Optional[str] = None):
         """Clean up after fit or test."""
@@ -278,21 +283,23 @@ if __name__ == "__main__":
         datamodule.prepare_data()
         datamodule.setup()
         loader = datamodule.train_dataloader()
-        bx, by = next(iter(loader))
-        print("n_batch", len(loader), len(bx), len(by), type(by))
+        batch = next(iter(loader))
+        print(batch)
         
+        # print("n_batch", len(loader), len(bx), len(by), type(by))
         
-        # for bx, by in tqdm(datamodule.train_dataloader()):
-        #     pass
-        # print("training data passed")
+        # # for bx, by in tqdm(datamodule.train_dataloader()):
+        # #     pass
+        # # print("training data passed")
 
-        # for bx, by in tqdm(datamodule.val_dataloader()):
-        #     pass
-        # print("validation data passed")
+        # # for bx, by in tqdm(datamodule.val_dataloader()):
+        # #     pass
+        # # print("validation data passed")
 
-        for bx, by in tqdm(datamodule.test_dataloader()):
-            pass
-        print("test data passed")
+        # for bx, by in tqdm(datamodule.test_dataloader()):
+        #     print(bx + ' ' + by)
+        #     pass
+        # print("test data passed")
 
     @hydra.main(version_base="1.3", config_path=config_path, config_name="recog.yaml")
     def main(cfg: DictConfig):

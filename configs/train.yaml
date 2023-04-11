@@ -4,8 +4,8 @@
 # order of defaults determines the order in which configs override each other
 defaults:
   - _self_
-  - data: mnist.yaml
-  - model: mnist.yaml
+  - data: recog.yaml
+  - model: recog.yaml
   - callbacks: default.yaml
   - logger: null # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: default.yaml
@@ -28,7 +28,7 @@ defaults:
   - debug: null
 
 # task name, determines output directory path
-task_name: "train"
+task_name: "test"
 
 # tags to help you identify your experiments
 # you can overwrite this in experiment configs
@@ -36,7 +36,7 @@ task_name: "train"
 tags: ["dev"]
 
 # set False to skip model training
-train: True
+train: False
 
 # evaluate on test set, using best model weights achieved during training
 # lightning chooses best weights based on the metric specified in checkpoint callback
@@ -46,7 +46,7 @@ test: True
 compile: False
 
 # simply provide checkpoint path to resume training
-ckpt_path: null
+ckpt_path: 'src/models/checkpoints/tsn_r50_video_1x1x8_100e_kinetics400_rgb_20200702-568cde33.pth'
 
 # seed for random number generators in pytorch, numpy and python.random
 seed: null
