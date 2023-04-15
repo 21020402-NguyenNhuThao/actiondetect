@@ -159,12 +159,12 @@ if __name__ == "__main__":
     def test_net(cfg):
         net = hydra.utils.instantiate(cfg.net)
         print("*"*20+" net "+"*"*20, "\n", net)
-        output = net(torch.randn(1, 750, 224, 224))
+        output = net(torch.randn(1, 10, 3, 224, 224))
         print("output", output.shape)
 
     def test_module(cfg):
         module = hydra.utils.instantiate(cfg)
-        output = module(torch.randn(1, 750, 224, 224))
+        output = module(torch.randn(1, 10, 3, 224, 224))
         print("module output", output.shape)
 
     @hydra.main(version_base="1.3", config_path=config_path, config_name="recog.yaml")

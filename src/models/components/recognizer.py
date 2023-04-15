@@ -6,7 +6,7 @@ from mmaction.apis import single_gpu_test
 import torch.nn.functional as F
 from mmcv.parallel import MMDataParallel
 from mmaction.apis import inference_recognizer, init_recognizer
-
+from mmaction.models import build_model
 
 class SimpleRecog(nn.Module):
     def __init__(
@@ -21,7 +21,7 @@ class SimpleRecog(nn.Module):
         self.cfg.evaluation.save_best='auto'
 
         self.device = torch.device(device)
-        self.model = init_recognizer(config_file,checkpoint_file,device)
+        self.model = build_model(self.cfg.model, train_cfg=self.cfg.get('train_cfg'), test_cfg=self.cfg.get('test_cfg'))
         self.model.eval()
     def forward(self, x): 
         # batch_size, channels, width, height = x.size()
@@ -39,8 +39,12 @@ class SimpleRecog(nn.Module):
         # print(type(x))
         # x = x.view(250,3,224,224)
         # X 4 dimentions B * C * H * W
-        print(x.shape)
-        x.unsqueeze(0)
+        
+        
+        # print(x.shape)
+        # x.unsqueeze(0)
+        # return self.model.forward(x, return_loss = False)
+        #print(x.shape) #batch, chunk, channel, H,W)
         return self.model.forward(x, return_loss = False)
         
         
