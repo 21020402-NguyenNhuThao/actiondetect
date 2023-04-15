@@ -2,8 +2,8 @@
 
 defaults:
   - _self_
-  - data: mnist.yaml # choose datamodule with `test_dataloader()` for evaluation
-  - model: mnist.yaml
+  - data: recog.yaml # choose datamodule with `test_dataloader()` for evaluation
+  - model: recog.yaml
   - logger: null
   - trainer: default.yaml
   - paths: default.yaml
